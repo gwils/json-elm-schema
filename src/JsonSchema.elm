@@ -1,4 +1,10 @@
-module JsonSchema exposing (Schema, additionalItems, allOf, anyOf, array, tuple, boolean, customFormat, dateTime, description, email, enum, examples, format, hostname, integer, ipv4, ipv6, items, lazy, maxItems, maxLength, maxProperties, maximum, minItems, minLength, minProperties, minimum, null, number, object, oneOf, optional, pattern, properties, required, string, title, tupleItems, uri)
+module JsonSchema exposing
+    ( Schema
+    , object, array, tuple, string, integer, number, boolean, null, oneOf, allOf, anyOf, lazy
+    , title, description, enum, examples, minimum, maximum, properties, items, minItems, maxItems, tupleItems, additionalItems, minLength, maxLength, pattern, format, minProperties, maxProperties
+    , required, optional
+    , dateTime, email, hostname, ipv4, ipv6, uri, customFormat
+    )
 
 {-| This library allows you to write your json schema files in elm, preventing inadvertent errors.
 
@@ -220,22 +226,22 @@ enum allowedValues schema =
 {-| `minimum` keyword
 -}
 minimum : num -> BaseNumberSchemaProperty num
-minimum number schema =
-    { schema | minimum = Just number }
+minimum num schema =
+    { schema | minimum = Just num }
 
 
 {-| `maximum` keyword
 -}
 maximum : num -> BaseNumberSchemaProperty num
-maximum number schema =
-    { schema | maximum = Just number }
+maximum num schema =
+    { schema | maximum = Just num }
 
 
 {-| `properties` keyword
 -}
 properties : List ObjectProperty -> ObjectSchemaProperty
-properties properties schema =
-    { schema | properties = schema.properties ++ properties }
+properties props schema =
+    { schema | properties = schema.properties ++ props }
 
 
 {-| `examples` keyword
@@ -262,8 +268,8 @@ maxProperties max schema =
 {-| `items` keyword
 -}
 items : Schema -> ArraySchemaProperty
-items items schema =
-    { schema | items = Just items }
+items itms schema =
+    { schema | items = Just itms }
 
 
 {-| `minItems` keyword
@@ -283,15 +289,15 @@ maxItems max schema =
 {-| `items` keyword for tuples (heretogeneous javascript arrays)
 -}
 tupleItems : List Schema -> TupleSchemaProperty
-tupleItems items schema =
-    { schema | items = Just items }
+tupleItems itms schema =
+    { schema | items = Just itms }
 
 
 {-| `additionalItems` keyword for tuples
 -}
 additionalItems : Schema -> TupleSchemaProperty
-additionalItems additionalItems schema =
-    { schema | additionalItems = Just additionalItems }
+additionalItems itms schema =
+    { schema | additionalItems = Just itms }
 
 
 {-| `minLength` keyword

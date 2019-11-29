@@ -1,7 +1,7 @@
 module Fuzz.Extra exposing (..)
 
 import Fuzz exposing (..)
-import Random.Pcg as Random
+import Random
 import Shrink exposing (Shrinker)
 
 
@@ -11,9 +11,9 @@ Shrunken values will also be within the range.
 floatMinimum : Float -> Fuzzer Float
 floatMinimum lo =
     custom
-        (Random.frequency
-            [ ( 4, Random.float lo (lo + 100) )
-            , ( 1, Random.constant lo )
+        (Random.weighted
+            ( 4, Random.float lo (lo + 100) )
+            [ ( 1, Random.constant lo )
             , ( 8, Random.float lo (toFloat <| Random.maxInt - Random.minInt) )
             ]
         )
@@ -26,9 +26,9 @@ Shrunken values will also be within the range.
 floatMaximum : Float -> Fuzzer Float
 floatMaximum hi =
     custom
-        (Random.frequency
-            [ ( 4, Random.float (hi - 100) hi )
-            , ( 1, Random.constant hi )
+        (Random.weighted
+            ( 4, Random.float (hi - 100) hi )
+            [ ( 1, Random.constant hi )
             , ( 8, Random.float (toFloat <| Random.minInt - Random.maxInt) hi )
             ]
         )
@@ -40,7 +40,7 @@ floatMaximum hi =
 oneOf : List a -> Fuzzer a
 oneOf values =
     values
-        |> List.map (Fuzz.constant >> (,) 1)
+        |> List.map (Fuzz.constant >> (\b -> ( 1, b )))
         |> Fuzz.frequency
 
 

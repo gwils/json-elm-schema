@@ -1,4 +1,7 @@
-module JsonSchema.Validator exposing (Error, ErrorMessage(..), validate)
+module JsonSchema.Validator exposing
+    ( validate
+    , Error, ErrorMessage(..)
+    )
 
 {-| Validating a JSON Schema.
 
@@ -11,7 +14,7 @@ It does not yet validate the `format` keyword.
 
 import Array
 import Dict exposing (Dict)
-import Json.Decode exposing (..)
+import Json.Decode exposing (Decoder, Value, array, bool, decodeValue, dict, float, int, null, string, value)
 import Json.Pointer
 import JsonSchema.Model exposing (..)
 import Regex
@@ -59,6 +62,7 @@ validateTuple schema values =
         ++ validateMinItems schema.minItems values
         ++ validateMaxItems schema.maxItems values
 
+
 validateItems : Maybe Schema -> Array.Array Value -> List Error
 validateItems items values =
     case items of
@@ -67,6 +71,7 @@ validateItems items values =
 
         Just itemSchema ->
             List.concat (List.indexedMap (\i v -> List.map (appendName (toString i)) (validate itemSchema v)) (Array.toList values))
+
 
 validateMinItems : Maybe Int -> Array.Array Value -> List Error
 validateMinItems int values =
@@ -77,6 +82,7 @@ validateMinItems int values =
         Just minItems ->
             if Array.length values >= minItems then
                 []
+
             else
                 [ ( [], HasFewerItemsThan minItems ) ]
 
@@ -90,6 +96,7 @@ validateMaxItems int values =
         Just maxItems ->
             if Array.length values <= maxItems then
                 []
+
             else
                 [ ( [], HasMoreItemsThan maxItems ) ]
 
@@ -99,19 +106,21 @@ validateTupleItems items additionalItems values =
     let
         validateAll_ : Schema -> Array.Array Value -> List Error
         validateAll_ schema vals =
-            List.concat 
-                ( List.indexedMap (\i v -> 
-                    List.map (appendName (toString i)) (validate schema v)) 
+            List.concat
+                (List.indexedMap
+                    (\i v ->
+                        List.map (appendName (toString i)) (validate schema v)
+                    )
                     (Array.toList vals)
                 )
 
         validateMap_ : List Schema -> Array.Array Value -> List Error
         validateMap_ schemas vals =
             List.map3 validateWithIndex_
-                ( List.range 0 ((Array.length vals) - 1))
+                (List.range 0 (Array.length vals - 1))
                 schemas
-                ( Array.toList vals )
-                   |> List.concat
+                (Array.toList vals)
+                |> List.concat
 
         validateWithIndex_ i schema v =
             validate schema v
@@ -125,7 +134,7 @@ validateTupleItems items additionalItems values =
             validateAll_ additionalItemSchema values
 
         ( Just itemSchemas, Nothing ) ->
-            {-- Note: the spec doesn't specify what should happen if you
+            {--Note: the spec doesn't specify what should happen if you
              have more schemas than values. If you have less schemas, it
              suggests the extra values won't be validated.
              
@@ -135,16 +144,15 @@ validateTupleItems items additionalItems values =
              schemas than values, but to go along with the general 
              permissiveness of JSON Schema, we just validate to the lowest 
              length.  --}
-                 
             validateMap_ itemSchemas values
 
         ( Just itemSchemas, Just additionalItemSchema ) ->
             let
-                ( tupleValues, remainder ) = 
+                ( tupleValues, remainder ) =
                     arraySplitAt (List.length itemSchemas) values
             in
-                ( validateMap_ itemSchemas tupleValues )
-                    ++ ( validateAll_ additionalItemSchema remainder )
+            validateMap_ itemSchemas tupleValues
+                ++ validateAll_ additionalItemSchema remainder
 
 
 validateString : StringSchema -> String -> List Error
@@ -156,53 +164,57 @@ validateString schema string =
 
 
 validateMinLength : Maybe Int -> String -> List Error
-validateMinLength minLength string =
-    case minLength of
+validateMinLength maybeMinLength string =
+    case maybeMinLength of
         Nothing ->
             []
 
         Just minLength ->
             if String.length string >= minLength then
                 []
+
             else
                 [ ( [], IsShorterThan minLength ) ]
 
 
 validateMaxLength : Maybe Int -> String -> List Error
-validateMaxLength maxLength string =
-    case maxLength of
+validateMaxLength maybeMaxLength string =
+    case maybeMaxLength of
         Nothing ->
             []
 
         Just maxLength ->
             if String.length string <= maxLength then
                 []
+
             else
                 [ ( [], IsLongerThan maxLength ) ]
 
 
 validatePattern : Maybe String -> String -> List Error
-validatePattern pattern string =
-    case pattern of
+validatePattern maybePattern string =
+    case maybePattern of
         Nothing ->
             []
 
         Just pattern ->
             if Regex.contains (Regex.regex pattern) string then
                 []
+
             else
                 [ ( [], DoesNotMatchPattern pattern ) ]
 
 
 validateEnum : Maybe (List a) -> a -> List Error
-validateEnum enum a =
-    case enum of
+validateEnum maybeEnum a =
+    case maybeEnum of
         Nothing ->
             []
 
         Just enum ->
             if List.member a enum then
                 []
+
             else
                 [ ( [], NotInEnumeration ) ]
 
@@ -242,27 +254,29 @@ validateNumber schema number =
 
 
 validateMinimum : Maybe Float -> Float -> List Error
-validateMinimum minimum number =
-    case minimum of
+validateMinimum maybeMinimum number =
+    case maybeMinimum of
         Nothing ->
             []
 
         Just minimum ->
             if number >= minimum then
                 []
+
             else
                 [ ( [], IsLessThan minimum ) ]
 
 
 validateMaximum : Maybe Float -> Float -> List Error
-validateMaximum maximum number =
-    case maximum of
+validateMaximum maybeMaximum number =
+    case maybeMaximum of
         Nothing ->
             []
 
         Just maximum ->
             if number <= maximum then
                 []
+
             else
                 [ ( [], IsMoreThan maximum ) ]
 
@@ -318,7 +332,7 @@ validate schema v =
 
         OneOf oneOfSchema ->
             oneOfSchema.subSchemas
-                |> List.map (flip validate v)
+                |> List.map (\a -> validate a v)
                 |> List.filter (not << List.isEmpty)
                 |> List.length
                 |> (\i ->
@@ -335,7 +349,7 @@ validate schema v =
 
         AnyOf anyOfSchema ->
             anyOfSchema.subSchemas
-                |> List.map (flip validate v)
+                |> List.map (\a -> validate a v)
                 |> List.filter List.isEmpty
                 |> List.length
                 |> (\i ->
@@ -349,7 +363,7 @@ validate schema v =
 
         AllOf allOfSchema ->
             allOfSchema.subSchemas
-                |> List.map (flip validate v)
+                |> List.map (\a -> validate a v)
                 |> List.filter (not << List.isEmpty)
                 |> List.length
                 |> (\i ->
@@ -386,9 +400,8 @@ appendName name ( pointer, error ) =
     ( name :: pointer, error )
 
 
-    
 {-| Split an array into two arrays, the first ending at and the second starting at the given index
-    NOTE: copied from Array.Extra
+NOTE: copied from Array.Extra
 -}
 arraySplitAt : Int -> Array.Array a -> ( Array.Array a, Array.Array a )
 arraySplitAt index xs =
@@ -397,15 +410,15 @@ arraySplitAt index xs =
         len =
             Array.length xs
     in
-        case ( index > 0, index < len ) of
-            ( True, True ) ->
-                ( Array.slice 0 index xs, Array.slice index len xs )
+    case ( index > 0, index < len ) of
+        ( True, True ) ->
+            ( Array.slice 0 index xs, Array.slice index len xs )
 
-            ( True, False ) ->
-                ( xs, Array.empty )
+        ( True, False ) ->
+            ( xs, Array.empty )
 
-            ( False, True ) ->
-                ( Array.empty, xs )
+        ( False, True ) ->
+            ( Array.empty, xs )
 
-            ( False, False ) ->
-                ( Array.empty, Array.empty )
+        ( False, False ) ->
+            ( Array.empty, Array.empty )

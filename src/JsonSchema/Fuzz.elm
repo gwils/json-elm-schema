@@ -35,7 +35,7 @@ schemaValue schema =
 
         Tuple tupleSchema ->
             tupleFuzzer tupleSchema
-            
+
         String stringSchema ->
             stringFuzzer stringSchema
 
@@ -81,6 +81,7 @@ objectFuzzer objectSchema =
     in
     if unfuzzable then
         Fuzz.invalid "Fuzzing minProperties or maxProperties is currently not supported."
+
     else
         List.map propertyFuzzer objectSchema.properties
             |> Fuzz.Extra.sequence
@@ -92,11 +93,11 @@ propertyFuzzer objectProperty =
     case objectProperty of
         Required key subSchema ->
             schemaValue subSchema
-                |> Fuzz.map ((,) key >> Just)
+                |> Fuzz.map ((\b -> ( key, b )) >> Just)
 
         Optional key subSchema ->
             schemaValue subSchema
-                |> Fuzz.map ((,) key)
+                |> Fuzz.map (\b -> ( key, b ))
                 |> Fuzz.maybe
 
 
@@ -132,42 +133,42 @@ arrayFuzzer arraySchema =
 tupleFuzzer : TupleSchema -> Fuzzer Value
 tupleFuzzer tupleSchema =
     case ( tupleSchema.minItems, tupleSchema.maxItems ) of
-
         ( Nothing, Nothing ) ->
             tupleWithNoMinOrMaxItemsFuzzer
                 tupleSchema.items
                 tupleSchema.additionalItems
-                    |> Fuzz.map Encode.list
- 
+                |> Fuzz.map Encode.list
+
         ( Nothing, Just maxItems ) ->
-            tupleWithOnlyMaxItemsFuzzer 
-                tupleSchema.items 
-                tupleSchema.additionalItems 
+            tupleWithOnlyMaxItemsFuzzer
+                tupleSchema.items
+                tupleSchema.additionalItems
                 maxItems
-                    |> Fuzz.map Encode.list
+                |> Fuzz.map Encode.list
 
         ( Just minItems, Nothing ) ->
-            tupleWithOnlyMinItemsFuzzer 
-                tupleSchema.items 
-                tupleSchema.additionalItems 
+            tupleWithOnlyMinItemsFuzzer
+                tupleSchema.items
+                tupleSchema.additionalItems
                 minItems
-                    |> Fuzz.map Encode.list
+                |> Fuzz.map Encode.list
 
         ( Just minItems, Just maxItems ) ->
-            tupleWithMinAndMaxItemsFuzzer 
-                tupleSchema.items 
-                tupleSchema.additionalItems 
-                minItems 
+            tupleWithMinAndMaxItemsFuzzer
+                tupleSchema.items
+                tupleSchema.additionalItems
+                minItems
                 maxItems
-                    |> Fuzz.map Encode.list
+                |> Fuzz.map Encode.list
+
 
 
 -- Tuple fuzzer helpers
 
+
 tupleWithNoMinOrMaxItemsFuzzer : Maybe (List Schema) -> Maybe Schema -> Fuzzer (List Value)
 tupleWithNoMinOrMaxItemsFuzzer maybeItems maybeAdditionalItems =
-    case (maybeItems, maybeAdditionalItems) of
-
+    case ( maybeItems, maybeAdditionalItems ) of
         ( Nothing, Nothing ) ->
             anyValueFuzzer
                 |> Fuzz.Extra.variableList 0 100
@@ -180,17 +181,16 @@ tupleWithNoMinOrMaxItemsFuzzer maybeItems maybeAdditionalItems =
             fuzzTupleItems_ subSchemas
 
         ( Just subSchemas, Just additionalItemsSchema ) ->
-            Fuzz.map2 (++)           
-                ( fuzzTupleItems_ subSchemas )
-                ( schemaValue additionalItemsSchema 
+            Fuzz.map2 (++)
+                (fuzzTupleItems_ subSchemas)
+                (schemaValue additionalItemsSchema
                     |> Fuzz.Extra.variableList 0 100
                 )
 
 
 tupleWithOnlyMaxItemsFuzzer : Maybe (List Schema) -> Maybe Schema -> Int -> Fuzzer (List Value)
 tupleWithOnlyMaxItemsFuzzer maybeItems maybeAdditionalItems maxItems =
-    case (maybeItems, maybeAdditionalItems) of
-
+    case ( maybeItems, maybeAdditionalItems ) of
         ( Nothing, Nothing ) ->
             anyValueFuzzer
                 |> Fuzz.Extra.variableList 0 maxItems
@@ -204,31 +204,30 @@ tupleWithOnlyMaxItemsFuzzer maybeItems maybeAdditionalItems maxItems =
                 subSchemaCount =
                     List.length subSchemas
             in
-            case (compare maxItems subSchemaCount) of
-                LT ->   
+            case compare maxItems subSchemaCount of
+                LT ->
                     -- number of schemas is greater than max, use only up to max schemas
                     fuzzTupleItems_ (List.take maxItems subSchemas)
 
-                EQ ->   
+                EQ ->
                     -- number of schemas is equal to max, use all the schemas
                     fuzzTupleItems_ subSchemas
 
-                GT ->   
+                GT ->
                     -- number of schemas is less than max, use schemas + up to remainder of max "dummy"
                     Fuzz.map2 (++)
-                        ( fuzzTupleItems_ subSchemas )
-                        ( anyValueFuzzer
-                              |> Fuzz.Extra.variableList 0
-                                   (maxItems - subSchemaCount)
+                        (fuzzTupleItems_ subSchemas)
+                        (anyValueFuzzer
+                            |> Fuzz.Extra.variableList 0
+                                (maxItems - subSchemaCount)
                         )
- 
+
         ( Just subSchemas, Just additionalItemsSchema ) ->
             let
                 subSchemaCount =
                     List.length subSchemas
             in
-            case (compare maxItems subSchemaCount) of
-                
+            case compare maxItems subSchemaCount of
                 LT ->
                     -- number of schemas is greater than max, use only up to max schemas
                     fuzzTupleItems_ (List.take maxItems subSchemas)
@@ -240,17 +239,16 @@ tupleWithOnlyMaxItemsFuzzer maybeItems maybeAdditionalItems maxItems =
                 GT ->
                     -- number of schemas is less than max, use schemas + up to remainder of max additional
                     Fuzz.map2 (++)
-                        ( fuzzTupleItems_ subSchemas )
-                        ( schemaValue additionalItemsSchema 
+                        (fuzzTupleItems_ subSchemas)
+                        (schemaValue additionalItemsSchema
                             |> Fuzz.Extra.variableList 0
-                                 (maxItems - subSchemaCount)
+                                (maxItems - subSchemaCount)
                         )
 
 
 tupleWithOnlyMinItemsFuzzer : Maybe (List Schema) -> Maybe Schema -> Int -> Fuzzer (List Value)
 tupleWithOnlyMinItemsFuzzer maybeItems maybeAdditionalItems minItems =
-    case (maybeItems, maybeAdditionalItems) of
-
+    case ( maybeItems, maybeAdditionalItems ) of
         ( Nothing, Nothing ) ->
             anyValueFuzzer
                 |> Fuzz.Extra.variableList minItems (minItems + 100)
@@ -264,8 +262,7 @@ tupleWithOnlyMinItemsFuzzer maybeItems maybeAdditionalItems minItems =
                 subSchemaCount =
                     List.length subSchemas
             in
-            case (compare minItems subSchemaCount) of
-
+            case compare minItems subSchemaCount of
                 LT ->
                     -- number of schemas is greater than min, use all the schemas
                     fuzzTupleItems_ subSchemas
@@ -277,50 +274,49 @@ tupleWithOnlyMinItemsFuzzer maybeItems maybeAdditionalItems minItems =
                 GT ->
                     -- number of schemas is less than min, use schemas + at least up to min "dummy"
                     Fuzz.map2 (++)
-                        ( fuzzTupleItems_ subSchemas )
-                        ( anyValueFuzzer 
-                              |> Fuzz.Extra.variableList 
-                                   (minItems - subSchemaCount) 
-                                   (minItems - subSchemaCount + 100) 
+                        (fuzzTupleItems_ subSchemas)
+                        (anyValueFuzzer
+                            |> Fuzz.Extra.variableList
+                                (minItems - subSchemaCount)
+                                (minItems - subSchemaCount + 100)
                         )
-
 
         ( Just subSchemas, Just additionalItemsSchema ) ->
             let
                 subSchemaCount =
                     List.length subSchemas
             in
-            case (compare minItems subSchemaCount) of
+            case compare minItems subSchemaCount of
                 LT ->
                     -- number of schemas is greater than min, use all the schemas + up to 100 additional
                     Fuzz.map2 (++)
-                        ( fuzzTupleItems_ subSchemas )
-                        ( schemaValue additionalItemsSchema 
+                        (fuzzTupleItems_ subSchemas)
+                        (schemaValue additionalItemsSchema
                             |> Fuzz.Extra.variableList 0 100
                         )
 
                 EQ ->
                     -- number of schemas is equal to min, use all the schemas + up to 100 additional
                     Fuzz.map2 (++)
-                        ( fuzzTupleItems_ subSchemas )
-                        ( schemaValue additionalItemsSchema 
+                        (fuzzTupleItems_ subSchemas)
+                        (schemaValue additionalItemsSchema
                             |> Fuzz.Extra.variableList 0 100
                         )
 
                 GT ->
                     -- number of schemas is less than min, use all the schemas + at least up to min additional
                     Fuzz.map2 (++)
-                        ( fuzzTupleItems_ subSchemas )
-                        ( schemaValue additionalItemsSchema
-                              |> Fuzz.Extra.variableList 
-                                   (minItems - subSchemaCount) 
-                                   (minItems - subSchemaCount + 100) 
+                        (fuzzTupleItems_ subSchemas)
+                        (schemaValue additionalItemsSchema
+                            |> Fuzz.Extra.variableList
+                                (minItems - subSchemaCount)
+                                (minItems - subSchemaCount + 100)
                         )
 
 
 tupleWithMinAndMaxItemsFuzzer : Maybe (List Schema) -> Maybe Schema -> Int -> Int -> Fuzzer (List Value)
 tupleWithMinAndMaxItemsFuzzer maybeItems maybeAdditionalItems minItems maxItems =
-    case (maybeItems, maybeAdditionalItems) of
+    case ( maybeItems, maybeAdditionalItems ) of
         ( Nothing, Nothing ) ->
             -- no schema or additional specified, fill array between min and max with "dummy"
             anyValueFuzzer
@@ -336,143 +332,140 @@ tupleWithMinAndMaxItemsFuzzer maybeItems maybeAdditionalItems minItems maxItems 
                 subSchemaCount =
                     List.length subSchemas
 
-                compareMin = 
+                compareMin =
                     compare minItems subSchemaCount
 
                 compareMax =
                     compare maxItems subSchemaCount
-
             in
-            case (compareMin, compareMax) of
-               ( LT, LT ) ->    
-                   -- number of schemas is greater than both min and max,
-                   -- only use up to max schemas
-                   fuzzTupleItems_ (List.take maxItems subSchemas)
+            case ( compareMin, compareMax ) of
+                ( LT, LT ) ->
+                    -- number of schemas is greater than both min and max,
+                    -- only use up to max schemas
+                    fuzzTupleItems_ (List.take maxItems subSchemas)
 
-               ( LT, EQ ) ->    
-                   -- number of schemas is greater than min and equal to max,
-                   -- use all the schemas
-                   fuzzTupleItems_ subSchemas
+                ( LT, EQ ) ->
+                    -- number of schemas is greater than min and equal to max,
+                    -- use all the schemas
+                    fuzzTupleItems_ subSchemas
 
-               ( LT, GT ) ->    
-                   -- number of schemas is between min and max,
-                   -- use all the schemas + up to the remainder of max "dummy"
-                   Fuzz.map2 (++)
-                       ( fuzzTupleItems_ subSchemas )
-                       ( anyValueFuzzer
-                             |> Fuzz.Extra.variableList 0 
-                                  (maxItems - subSchemaCount)
-                       )
+                ( LT, GT ) ->
+                    -- number of schemas is between min and max,
+                    -- use all the schemas + up to the remainder of max "dummy"
+                    Fuzz.map2 (++)
+                        (fuzzTupleItems_ subSchemas)
+                        (anyValueFuzzer
+                            |> Fuzz.Extra.variableList 0
+                                (maxItems - subSchemaCount)
+                        )
 
-               ( EQ, LT ) ->    
-                   -- nonsensical
-                   Fuzz.constant []
+                ( EQ, LT ) ->
+                    -- nonsensical
+                    Fuzz.constant []
 
-               ( EQ, EQ ) ->    
-                   -- number of schemas is equal to both min and max,
-                   -- use all the schemas
-                   fuzzTupleItems_ subSchemas
+                ( EQ, EQ ) ->
+                    -- number of schemas is equal to both min and max,
+                    -- use all the schemas
+                    fuzzTupleItems_ subSchemas
 
-               ( EQ, GT ) ->    
-                   -- number of schemas is equal to min and less than max,
-                   -- use all the schemas + up to the remainder of max "dummy"
-                   Fuzz.map2 (++)
-                       ( fuzzTupleItems_ subSchemas )
-                       ( anyValueFuzzer
-                             |> Fuzz.Extra.variableList 0 
-                                  (maxItems - subSchemaCount)
-                       )
+                ( EQ, GT ) ->
+                    -- number of schemas is equal to min and less than max,
+                    -- use all the schemas + up to the remainder of max "dummy"
+                    Fuzz.map2 (++)
+                        (fuzzTupleItems_ subSchemas)
+                        (anyValueFuzzer
+                            |> Fuzz.Extra.variableList 0
+                                (maxItems - subSchemaCount)
+                        )
 
-               ( GT, LT ) ->    
-                   -- nonsensical
-                   Fuzz.constant []
+                ( GT, LT ) ->
+                    -- nonsensical
+                    Fuzz.constant []
 
-               ( GT, EQ ) ->    
-                   -- nonsensical
-                   Fuzz.constant []
+                ( GT, EQ ) ->
+                    -- nonsensical
+                    Fuzz.constant []
 
-               ( GT, GT ) ->    
-                   -- number of schemas is less than both min and max
-                   -- use all the schemas + between the remainder to min and the remainder to max "dummy"
-                   Fuzz.map2 (++)
-                       ( fuzzTupleItems_ subSchemas )
-                       ( anyValueFuzzer
-                           |> Fuzz.Extra.variableList 
+                ( GT, GT ) ->
+                    -- number of schemas is less than both min and max
+                    -- use all the schemas + between the remainder to min and the remainder to max "dummy"
+                    Fuzz.map2 (++)
+                        (fuzzTupleItems_ subSchemas)
+                        (anyValueFuzzer
+                            |> Fuzz.Extra.variableList
                                 (minItems - subSchemaCount)
                                 (maxItems - subSchemaCount)
-                       )
-
+                        )
 
         ( Just subSchemas, Just additionalItemsSchema ) ->
             let
                 subSchemaCount =
                     List.length subSchemas
 
-                compareMin = 
+                compareMin =
                     compare minItems subSchemaCount
 
                 compareMax =
                     compare maxItems subSchemaCount
-
             in
-            case (compareMin, compareMax) of
-               ( LT, LT ) ->    
-                   -- number of schemas is greater than both min and max,
-                   -- only use up to max schemas
-                   fuzzTupleItems_ (List.take maxItems subSchemas)
+            case ( compareMin, compareMax ) of
+                ( LT, LT ) ->
+                    -- number of schemas is greater than both min and max,
+                    -- only use up to max schemas
+                    fuzzTupleItems_ (List.take maxItems subSchemas)
 
-               ( LT, EQ ) ->    
-                   -- number of schemas is greater than min and equal to max,
-                   -- use all the schemas
-                   fuzzTupleItems_ subSchemas
+                ( LT, EQ ) ->
+                    -- number of schemas is greater than min and equal to max,
+                    -- use all the schemas
+                    fuzzTupleItems_ subSchemas
 
-               ( LT, GT ) ->    
-                   -- number of schemas is between min and max,
-                   -- use all the schemas + up to the remainder of max additional
-                   Fuzz.map2 (++)
-                       ( fuzzTupleItems_ subSchemas )
-                       ( schemaValue additionalItemsSchema
-                             |> Fuzz.Extra.variableList 0 
-                                  (maxItems - subSchemaCount)
-                       )
+                ( LT, GT ) ->
+                    -- number of schemas is between min and max,
+                    -- use all the schemas + up to the remainder of max additional
+                    Fuzz.map2 (++)
+                        (fuzzTupleItems_ subSchemas)
+                        (schemaValue additionalItemsSchema
+                            |> Fuzz.Extra.variableList 0
+                                (maxItems - subSchemaCount)
+                        )
 
-               ( EQ, LT ) ->    
-                   -- nonsensical
-                   Fuzz.constant []
+                ( EQ, LT ) ->
+                    -- nonsensical
+                    Fuzz.constant []
 
-               ( EQ, EQ ) ->    
-                   -- number of schemas is equal to min and max,
-                   -- use all the schemas
-                   fuzzTupleItems_ subSchemas
+                ( EQ, EQ ) ->
+                    -- number of schemas is equal to min and max,
+                    -- use all the schemas
+                    fuzzTupleItems_ subSchemas
 
-               ( EQ, GT ) ->    
-                   -- number of schemas is equal to min and less than max,
-                   -- use all the schemas + up to the remainder of max additional
-                   Fuzz.map2 (++)
-                       ( fuzzTupleItems_ subSchemas )
-                       ( schemaValue additionalItemsSchema
-                             |> Fuzz.Extra.variableList 0 
-                                  (maxItems - subSchemaCount)
-                       )
+                ( EQ, GT ) ->
+                    -- number of schemas is equal to min and less than max,
+                    -- use all the schemas + up to the remainder of max additional
+                    Fuzz.map2 (++)
+                        (fuzzTupleItems_ subSchemas)
+                        (schemaValue additionalItemsSchema
+                            |> Fuzz.Extra.variableList 0
+                                (maxItems - subSchemaCount)
+                        )
 
-               ( GT, LT ) ->    
-                   -- nonsensical
-                   Fuzz.constant []
+                ( GT, LT ) ->
+                    -- nonsensical
+                    Fuzz.constant []
 
-               ( GT, EQ ) ->    
-                   -- nonsensical
-                   Fuzz.constant []
+                ( GT, EQ ) ->
+                    -- nonsensical
+                    Fuzz.constant []
 
-               ( GT, GT ) ->    
-                   -- number of schemas is less than both min and max,
-                   -- use all the schemas + between the remainder to min and the remainder to max additional
-                   Fuzz.map2 (++)
-                       ( fuzzTupleItems_ subSchemas )
-                       ( schemaValue additionalItemsSchema
-                           |> Fuzz.Extra.variableList 
+                ( GT, GT ) ->
+                    -- number of schemas is less than both min and max,
+                    -- use all the schemas + between the remainder to min and the remainder to max additional
+                    Fuzz.map2 (++)
+                        (fuzzTupleItems_ subSchemas)
+                        (schemaValue additionalItemsSchema
+                            |> Fuzz.Extra.variableList
                                 (minItems - subSchemaCount)
                                 (maxItems - subSchemaCount)
-                       )
+                        )
 
 
 fuzzTupleItems_ : List Schema -> Fuzzer (List Value)
@@ -480,7 +473,6 @@ fuzzTupleItems_ schemas =
     schemas
         |> List.map schemaValue
         |> Fuzz.Extra.sequence
-
 
 
 stringFuzzer : StringSchema -> Fuzzer Value
@@ -498,6 +490,7 @@ stringFuzzer schema =
             if tooShort str then
                 (str ++ str ++ "abc")
                     |> expandIfTooShort
+
             else
                 str
 
@@ -595,12 +588,14 @@ nullFuzzer =
 anyOfFuzzer : BaseCombinatorSchema -> Fuzzer Value
 anyOfFuzzer anyOfSchema =
     anyOfSchema.subSchemas
-        |> List.map (schemaValue >> (,) 1)
+        |> List.map (schemaValue >> (\b -> ( 1, b )))
         |> Fuzz.frequency
+
 
 
 -- TODO: something more interesting
 
-anyValueFuzzer : Fuzzer Value
-anyValueFuzzer = nullFuzzer
 
+anyValueFuzzer : Fuzzer Value
+anyValueFuzzer =
+    nullFuzzer

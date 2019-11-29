@@ -1,4 +1,4 @@
-module JsonSchema.Encoder exposing (EncoderProgram, encode, encodeSchemaProgram, encodeValue)
+module JsonSchema.Encoder exposing (encode, encodeValue, EncoderProgram, encodeSchemaProgram)
 
 {-| Encoding elm json schemas to real json.
 
@@ -64,6 +64,7 @@ encodeValue schema =
         addDefinitions schemaValue =
             if Dict.isEmpty cache then
                 schemaValue
+
             else
                 set "definitions" definitions schemaValue
     in
@@ -76,6 +77,7 @@ encodeExamples : List Encode.Value -> Maybe ( String, Encode.Value )
 encodeExamples examples =
     if List.isEmpty examples then
         Nothing
+
     else
         Just ( "examples", Encode.list examples )
 
@@ -85,12 +87,12 @@ encodeSubSchema cache schema =
     case schema of
         Object objectSchema ->
             [ Just ( "type", Encode.string "object" )
-            , Maybe.map ((,) "title" << Encode.string) objectSchema.title
-            , Maybe.map ((,) "description" << Encode.string) objectSchema.description
+            , Maybe.map ((\b -> ( "title", b )) << Encode.string) objectSchema.title
+            , Maybe.map ((\b -> ( "description", b )) << Encode.string) objectSchema.description
             , Just ( "properties", convertProperty cache objectSchema.properties )
             , Just ( "required", findRequiredFields objectSchema.properties )
-            , Maybe.map ((,) "minProperties" << Encode.int) objectSchema.minProperties
-            , Maybe.map ((,) "maxProperties" << Encode.int) objectSchema.maxProperties
+            , Maybe.map ((\b -> ( "minProperties", b )) << Encode.int) objectSchema.minProperties
+            , Maybe.map ((\b -> ( "maxProperties", b )) << Encode.int) objectSchema.maxProperties
             , encodeExamples objectSchema.examples
             ]
                 |> Maybe.Extra.values
@@ -98,11 +100,11 @@ encodeSubSchema cache schema =
 
         Array arraySchema ->
             [ Just ( "type", Encode.string "array" )
-            , Maybe.map ((,) "title" << Encode.string) arraySchema.title
-            , Maybe.map ((,) "description" << Encode.string) arraySchema.description
-            , Maybe.map ((,) "items" << encodeSubSchema cache) arraySchema.items
-            , Maybe.map ((,) "minItems" << Encode.int) arraySchema.minItems
-            , Maybe.map ((,) "maxItems" << Encode.int) arraySchema.maxItems
+            , Maybe.map ((\b -> ( "title", b )) << Encode.string) arraySchema.title
+            , Maybe.map ((\b -> ( "description", b )) << Encode.string) arraySchema.description
+            , Maybe.map ((\b -> ( "items", b )) << encodeSubSchema cache) arraySchema.items
+            , Maybe.map ((\b -> ( "minItems", b )) << Encode.int) arraySchema.minItems
+            , Maybe.map ((\b -> ( "maxItems", b )) << Encode.int) arraySchema.maxItems
             , encodeExamples arraySchema.examples
             ]
                 |> Maybe.Extra.values
@@ -110,12 +112,12 @@ encodeSubSchema cache schema =
 
         Tuple tupleSchema ->
             [ Just ( "type", Encode.string "array" )
-            , Maybe.map ((,) "title" << Encode.string) tupleSchema.title
-            , Maybe.map ((,) "description" << Encode.string) tupleSchema.description
-            , Maybe.map ((,) "items" << Encode.list << List.map (encodeSubSchema cache)) tupleSchema.items
-            , Maybe.map ((,) "minItems" << Encode.int) tupleSchema.minItems
-            , Maybe.map ((,) "maxItems" << Encode.int) tupleSchema.maxItems
-            , Maybe.map ((,) "additionalItems" << encodeSubSchema cache) tupleSchema.additionalItems
+            , Maybe.map ((\b -> ( "title", b )) << Encode.string) tupleSchema.title
+            , Maybe.map ((\b -> ( "description", b )) << Encode.string) tupleSchema.description
+            , Maybe.map ((\b -> ( "items", b )) << Encode.list << List.map (encodeSubSchema cache)) tupleSchema.items
+            , Maybe.map ((\b -> ( "minItems", b )) << Encode.int) tupleSchema.minItems
+            , Maybe.map ((\b -> ( "maxItems", b )) << Encode.int) tupleSchema.maxItems
+            , Maybe.map ((\b -> ( "additionalItems", b )) << encodeSubSchema cache) tupleSchema.additionalItems
             , encodeExamples tupleSchema.examples
             ]
                 |> Maybe.Extra.values
@@ -123,13 +125,13 @@ encodeSubSchema cache schema =
 
         String stringSchema ->
             [ Just ( "type", Encode.string "string" )
-            , Maybe.map ((,) "title" << Encode.string) stringSchema.title
-            , Maybe.map ((,) "description" << Encode.string) stringSchema.description
-            , Maybe.map ((,) "enum" << Encode.list << List.map Encode.string) stringSchema.enum
-            , Maybe.map ((,) "minLength" << Encode.int) stringSchema.minLength
-            , Maybe.map ((,) "maxLength" << Encode.int) stringSchema.maxLength
-            , Maybe.map ((,) "pattern" << Encode.string) stringSchema.pattern
-            , Maybe.map ((,) "format" << Encode.string << printFormat) stringSchema.format
+            , Maybe.map ((\b -> ( "title", b )) << Encode.string) stringSchema.title
+            , Maybe.map ((\b -> ( "description", b )) << Encode.string) stringSchema.description
+            , Maybe.map ((\b -> ( "enum", b )) << Encode.list << List.map Encode.string) stringSchema.enum
+            , Maybe.map ((\b -> ( "minLength", b )) << Encode.int) stringSchema.minLength
+            , Maybe.map ((\b -> ( "maxLength", b )) << Encode.int) stringSchema.maxLength
+            , Maybe.map ((\b -> ( "pattern", b )) << Encode.string) stringSchema.pattern
+            , Maybe.map ((\b -> ( "format", b )) << Encode.string << printFormat) stringSchema.format
             , encodeExamples stringSchema.examples
             ]
                 |> Maybe.Extra.values
@@ -137,11 +139,11 @@ encodeSubSchema cache schema =
 
         Integer integerSchema ->
             [ Just ( "type", Encode.string "integer" )
-            , Maybe.map ((,) "title" << Encode.string) integerSchema.title
-            , Maybe.map ((,) "description" << Encode.string) integerSchema.description
-            , Maybe.map ((,) "enum" << Encode.list << List.map Encode.int) integerSchema.enum
-            , Maybe.map ((,) "minimum" << Encode.int) integerSchema.minimum
-            , Maybe.map ((,) "maximum" << Encode.int) integerSchema.maximum
+            , Maybe.map ((\b -> ( "title", b )) << Encode.string) integerSchema.title
+            , Maybe.map ((\b -> ( "description", b )) << Encode.string) integerSchema.description
+            , Maybe.map ((\b -> ( "enum", b )) << Encode.list << List.map Encode.int) integerSchema.enum
+            , Maybe.map ((\b -> ( "minimum", b )) << Encode.int) integerSchema.minimum
+            , Maybe.map ((\b -> ( "maximum", b )) << Encode.int) integerSchema.maximum
             , encodeExamples integerSchema.examples
             ]
                 |> Maybe.Extra.values
@@ -149,11 +151,11 @@ encodeSubSchema cache schema =
 
         Number numberSchema ->
             [ Just ( "type", Encode.string "number" )
-            , Maybe.map ((,) "title" << Encode.string) numberSchema.title
-            , Maybe.map ((,) "description" << Encode.string) numberSchema.description
-            , Maybe.map ((,) "enum" << Encode.list << List.map Encode.float) numberSchema.enum
-            , Maybe.map ((,) "minimum" << Encode.float) numberSchema.minimum
-            , Maybe.map ((,) "maximum" << Encode.float) numberSchema.maximum
+            , Maybe.map ((\b -> ( "title", b )) << Encode.string) numberSchema.title
+            , Maybe.map ((\b -> ( "description", b )) << Encode.string) numberSchema.description
+            , Maybe.map ((\b -> ( "enum", b )) << Encode.list << List.map Encode.float) numberSchema.enum
+            , Maybe.map ((\b -> ( "minimum", b )) << Encode.float) numberSchema.minimum
+            , Maybe.map ((\b -> ( "maximum", b )) << Encode.float) numberSchema.maximum
             , encodeExamples numberSchema.examples
             ]
                 |> Maybe.Extra.values
@@ -161,9 +163,9 @@ encodeSubSchema cache schema =
 
         Boolean booleanSchema ->
             [ Just ( "type", Encode.string "boolean" )
-            , Maybe.map ((,) "title" << Encode.string) booleanSchema.title
-            , Maybe.map ((,) "description" << Encode.string) booleanSchema.description
-            , Maybe.map ((,) "enum" << Encode.list << List.map Encode.bool) booleanSchema.enum
+            , Maybe.map ((\b -> ( "title", b )) << Encode.string) booleanSchema.title
+            , Maybe.map ((\b -> ( "description", b )) << Encode.string) booleanSchema.description
+            , Maybe.map ((\b -> ( "enum", b )) << Encode.list << List.map Encode.bool) booleanSchema.enum
             , encodeExamples booleanSchema.examples
             ]
                 |> Maybe.Extra.values
@@ -171,8 +173,8 @@ encodeSubSchema cache schema =
 
         Ref refSchema ->
             [ Just ( "$ref", Encode.string refSchema.ref )
-            , Maybe.map ((,) "title" << Encode.string) refSchema.title
-            , Maybe.map ((,) "description" << Encode.string) refSchema.description
+            , Maybe.map ((\b -> ( "title", b )) << Encode.string) refSchema.title
+            , Maybe.map ((\b -> ( "description", b )) << Encode.string) refSchema.description
             , encodeExamples refSchema.examples
             ]
                 |> Maybe.Extra.values
@@ -180,19 +182,19 @@ encodeSubSchema cache schema =
 
         Null nullSchema ->
             [ Just ( "type", Encode.string "null" )
-            , Maybe.map ((,) "title" << Encode.string) nullSchema.title
-            , Maybe.map ((,) "description" << Encode.string) nullSchema.description
+            , Maybe.map ((\b -> ( "title", b )) << Encode.string) nullSchema.title
+            , Maybe.map ((\b -> ( "description", b )) << Encode.string) nullSchema.description
             , encodeExamples nullSchema.examples
             ]
                 |> Maybe.Extra.values
                 |> Encode.object
 
         OneOf oneOfSchema ->
-            [ Maybe.map ((,) "title" << Encode.string) oneOfSchema.title
-            , Maybe.map ((,) "description" << Encode.string) oneOfSchema.description
+            [ Maybe.map ((\b -> ( "title", b )) << Encode.string) oneOfSchema.title
+            , Maybe.map ((\b -> ( "description", b )) << Encode.string) oneOfSchema.description
             , List.map (encodeSubSchema cache) oneOfSchema.subSchemas
                 |> Encode.list
-                |> (,) "oneOf"
+                |> (\b -> ( "oneOf", b ))
                 |> Just
             , encodeExamples oneOfSchema.examples
             ]
@@ -200,11 +202,11 @@ encodeSubSchema cache schema =
                 |> Encode.object
 
         AnyOf anyOfSchema ->
-            [ Maybe.map ((,) "title" << Encode.string) anyOfSchema.title
-            , Maybe.map ((,) "description" << Encode.string) anyOfSchema.description
+            [ Maybe.map ((\b -> ( "title", b )) << Encode.string) anyOfSchema.title
+            , Maybe.map ((\b -> ( "description", b )) << Encode.string) anyOfSchema.description
             , List.map (encodeSubSchema cache) anyOfSchema.subSchemas
                 |> Encode.list
-                |> (,) "anyOf"
+                |> (\b -> ( "anyOf", b ))
                 |> Just
             , encodeExamples anyOfSchema.examples
             ]
@@ -212,11 +214,11 @@ encodeSubSchema cache schema =
                 |> Encode.object
 
         AllOf allOfSchema ->
-            [ Maybe.map ((,) "title" << Encode.string) allOfSchema.title
-            , Maybe.map ((,) "description" << Encode.string) allOfSchema.description
+            [ Maybe.map ((\b -> ( "title", b )) << Encode.string) allOfSchema.title
+            , Maybe.map ((\b -> ( "description", b )) << Encode.string) allOfSchema.description
             , List.map (encodeSubSchema cache) allOfSchema.subSchemas
                 |> Encode.list
-                |> (,) "allOf"
+                |> (\b -> ( "allOf", b ))
                 |> Just
             , encodeExamples allOfSchema.examples
             ]
@@ -243,7 +245,7 @@ findThunks schema cache =
                 |> List.foldr findThunks cache
 
         Array { items } ->
-            Maybe.Extra.unwrap cache (flip findThunks cache) items
+            Maybe.Extra.unwrap cache (\a -> findThunks a cache) items
 
         Tuple { items } ->
             Maybe.Extra.unwrap cache (List.foldr findThunks cache) items
@@ -305,6 +307,7 @@ thunkDict thunk cache =
     in
     if Dict.member key cache then
         cache
+
     else
         cache
             |> Dict.insert key schema

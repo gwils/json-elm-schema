@@ -50,12 +50,13 @@ type alias ArraySchema =
         , maxItems : Maybe Int
         }
 
+
 type alias TupleSchema =
     BaseSchema
         { items : Maybe (List Schema)
         , minItems : Maybe Int
         , maxItems : Maybe Int
-        , additionalItems: Maybe Schema
+        , additionalItems : Maybe Schema
         }
 
 

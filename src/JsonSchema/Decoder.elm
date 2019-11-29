@@ -8,7 +8,7 @@ module JsonSchema.Decoder exposing (decoder)
 
 import Dict exposing (Dict)
 import Json.Decode exposing (..)
-import Json.Decode.Pipeline exposing (..)
+import Json.Decode.Pipeline exposing (optional, required)
 import Json.Encode as Encode
 import JsonSchema.Model as Model exposing (Schema)
 import Set
@@ -50,6 +50,7 @@ type alias PreArraySchema =
     , examples : List Encode.Value
     }
 
+
 type alias PreTupleSchema =
     { title : Maybe String
     , description : Maybe String
@@ -59,6 +60,7 @@ type alias PreTupleSchema =
     , additionalItems : Maybe PreSchema
     , examples : List Encode.Value
     }
+
 
 type alias PreStringSchema =
     { title : Maybe String
@@ -149,7 +151,7 @@ preSchemaDecoder =
     lazy
         (\_ ->
             oneOf
-                [ decode PreObjectSchema
+                [ succeed PreObjectSchema
                     |> maybeOptional "title" string
                     |> maybeOptional "description" string
                     |> optional "properties" (dict preSchemaDecoder) Dict.empty
@@ -159,7 +161,7 @@ preSchemaDecoder =
                     |> optional "examples" (list value) []
                     |> withType "object"
                     |> map Object
-                , decode PreArraySchema
+                , succeed PreArraySchema
                     |> maybeOptional "title" string
                     |> maybeOptional "description" string
                     |> maybeOptional "items" preSchemaDecoder
@@ -168,7 +170,7 @@ preSchemaDecoder =
                     |> optional "examples" (list value) []
                     |> withType "array"
                     |> map Array
-                , decode PreTupleSchema
+                , succeed PreTupleSchema
                     |> maybeOptional "title" string
                     |> maybeOptional "description" string
                     |> maybeOptional "items" (list preSchemaDecoder)
@@ -178,7 +180,7 @@ preSchemaDecoder =
                     |> optional "examples" (list value) []
                     |> withType "array"
                     |> map Tuple
-                , decode PreStringSchema
+                , succeed PreStringSchema
                     |> maybeOptional "title" string
                     |> maybeOptional "description" string
                     |> maybeOptional "minLength" int
@@ -189,7 +191,7 @@ preSchemaDecoder =
                     |> optional "examples" (list value) []
                     |> withType "string"
                     |> map String
-                , decode PreIntegerSchema
+                , succeed PreIntegerSchema
                     |> maybeOptional "title" string
                     |> maybeOptional "description" string
                     |> maybeOptional "minimum" int
@@ -198,7 +200,7 @@ preSchemaDecoder =
                     |> optional "examples" (list value) []
                     |> withType "integer"
                     |> map Integer
-                , decode PreNumberSchema
+                , succeed PreNumberSchema
                     |> maybeOptional "title" string
                     |> maybeOptional "description" string
                     |> maybeOptional "minimum" float
@@ -207,38 +209,38 @@ preSchemaDecoder =
                     |> optional "examples" (list value) []
                     |> withType "number"
                     |> map Number
-                , decode PreBooleanSchema
+                , succeed PreBooleanSchema
                     |> maybeOptional "title" string
                     |> maybeOptional "description" string
                     |> maybeOptional "enum" (list bool)
                     |> optional "examples" (list value) []
                     |> withType "boolean"
                     |> map Boolean
-                , decode PreBaseSchema
+                , succeed PreBaseSchema
                     |> maybeOptional "title" string
                     |> maybeOptional "description" string
                     |> optional "examples" (list value) []
                     |> withType "null"
                     |> map Null
-                , decode PreRefSchema
+                , succeed PreRefSchema
                     |> maybeOptional "title" string
                     |> maybeOptional "description" string
                     |> required "$ref" string
                     |> optional "examples" (list value) []
                     |> map Ref
-                , decode PreBaseCombinatorSchema
+                , succeed PreBaseCombinatorSchema
                     |> maybeOptional "title" string
                     |> maybeOptional "description" string
                     |> required "oneOf" (list preSchemaDecoder)
                     |> optional "examples" (list value) []
                     |> map OneOf
-                , decode PreBaseCombinatorSchema
+                , succeed PreBaseCombinatorSchema
                     |> maybeOptional "title" string
                     |> maybeOptional "description" string
                     |> required "anyOf" (list preSchemaDecoder)
                     |> optional "examples" (list value) []
                     |> map AnyOf
-                , decode PreBaseCombinatorSchema
+                , succeed PreBaseCombinatorSchema
                     |> maybeOptional "title" string
                     |> maybeOptional "description" string
                     |> required "allOf" (list preSchemaDecoder)
@@ -252,28 +254,29 @@ preSchemaDecoder =
 {-| Ensure a decoder has a specific "type" value.
 -}
 withType : String -> Decoder a -> Decoder a
-withType typeString decoder =
+withType typeString dcdr =
     field "type" (constant typeString string)
-        |> andThen (always decoder)
+        |> andThen (always dcdr)
 
 
 {-| Decode into a specific expected value or fail.
 -}
 constant : a -> Decoder a -> Decoder a
-constant expectedValue decoder =
-    decoder
+constant expectedValue dcdr =
+    dcdr
         |> andThen
             (\actualValue ->
                 if actualValue == expectedValue then
                     succeed actualValue
+
                 else
                     fail <| "Expected value: " ++ toString expectedValue ++ " but got value: " ++ toString actualValue
             )
 
 
 maybeOptional : String -> Decoder a -> Decoder (Maybe a -> b) -> Decoder b
-maybeOptional key decoder =
-    optional key (nullable decoder) Nothing
+maybeOptional key dcdr =
+    optional key (nullable dcdr) Nothing
 
 
 toSchema : Definitions -> PreSchema -> Schema
@@ -284,10 +287,11 @@ toSchema definitions preSchema =
                 requiredSet =
                     Set.fromList required
 
-                objectProperty ( key, preSchema ) =
-                    toSchema definitions preSchema
+                objectProperty ( key, preSchema2 ) =
+                    toSchema definitions preSchema2
                         |> (if Set.member key requiredSet then
                                 Model.Required key
+
                             else
                                 Model.Optional key
                            )
@@ -311,9 +315,9 @@ toSchema definitions preSchema =
 
         Tuple content ->
             Model.Tuple
-                { content 
-                    | items = Maybe.map (List.map (toSchema definitions)) content.items 
-                    , additionalItems = Maybe.map (toSchema definitions) content.additionalItems 
+                { content
+                    | items = Maybe.map (List.map (toSchema definitions)) content.items
+                    , additionalItems = Maybe.map (toSchema definitions) content.additionalItems
                 }
 
         String content ->
@@ -345,7 +349,7 @@ toSchema definitions preSchema =
 
         Ref content ->
             Dict.get content.ref definitions
-                |> Maybe.map (\preSchema -> Model.Lazy (\_ -> toSchema definitions preSchema))
+                |> Maybe.map (\preSchema2 -> Model.Lazy (\_ -> toSchema definitions preSchema2))
                 |> Maybe.withDefault (Model.Ref content)
 
         Fallback value ->
