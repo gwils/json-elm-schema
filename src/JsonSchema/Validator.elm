@@ -18,6 +18,7 @@ import Json.Decode exposing (Decoder, Value, array, bool, decodeValue, dict, flo
 import Json.Pointer
 import JsonSchema.Model exposing (..)
 import Regex
+import String
 
 
 {-| The error type from a validation. It contains a JSON Pointer to where
@@ -70,7 +71,7 @@ validateItems items values =
             []
 
         Just itemSchema ->
-            List.concat (List.indexedMap (\i v -> List.map (appendName (toString i)) (validate itemSchema v)) (Array.toList values))
+            List.concat (List.indexedMap (\i v -> List.map (appendName (String.fromInt i)) (validate itemSchema v)) (Array.toList values))
 
 
 validateMinItems : Maybe Int -> Array.Array Value -> List Error
@@ -109,7 +110,7 @@ validateTupleItems items additionalItems values =
             List.concat
                 (List.indexedMap
                     (\i v ->
-                        List.map (appendName (toString i)) (validate schema v)
+                        List.map (appendName (String.fromInt i)) (validate schema v)
                     )
                     (Array.toList vals)
                 )
@@ -124,7 +125,7 @@ validateTupleItems items additionalItems values =
 
         validateWithIndex_ i schema v =
             validate schema v
-                |> List.map (appendName (toString i))
+                |> List.map (appendName (String.fromInt i))
     in
     case ( items, additionalItems ) of
         ( Nothing, Nothing ) ->
@@ -193,12 +194,12 @@ validateMaxLength maybeMaxLength string =
 
 validatePattern : Maybe String -> String -> List Error
 validatePattern maybePattern string =
-    case maybePattern of
+    case Maybe.andThen Regex.fromString maybePattern of
         Nothing ->
             []
 
         Just pattern ->
-            if Regex.contains (Regex.regex pattern) string then
+            if Regex.contains pattern string then
                 []
 
             else

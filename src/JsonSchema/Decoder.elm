@@ -270,7 +270,7 @@ constant expectedValue dcdr =
                     succeed actualValue
 
                 else
-                    fail <| "Expected value: " ++ toString expectedValue ++ " but got value: " ++ toString actualValue
+                    fail "Expected value did not match actual value"
             )
 
 
